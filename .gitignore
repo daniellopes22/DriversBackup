@@ -1,1 +1,28 @@
+echo "# .gitignore para Batch" > .gitignore
+notepad .gitignore  # Cole o conteúdo e salve
+git add .gitignore
+git commit -m "Adiciona .gitignore customizado"
+git push
 
+# ============== ARQUIVOS DO WINDOWS ==============
+Thumbs.db
+Desktop.ini
+*.tmp
+*.log
+ehthumbs.db
+[Dd]esktop.ini
+
+# ============== ARQUIVOS DE SCRIPT ==============
+temp_*.txt
+backup_*/
+DriversBackup_*.log  # Exceto se quiser versionar logs
+
+# ============== IDEs/EDITORES ==============
+.vscode/
+.idea/
+*.suo
+*.user
+
+# ============== PowerShell ==============
+*.ps1xml
+*.pssc
