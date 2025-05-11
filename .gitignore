@@ -1,28 +1,30 @@
-echo "# .gitignore para Batch" > .gitignore
-notepad .gitignore  # Cole o conteúdo e salve
-git add .gitignore
-git commit -m "Adiciona .gitignore customizado"
-git push
+# ==============================================
+# Arquivos temporários e de sistema do Windows
+# ==============================================
+Thumbs.db    # Banco de dados de miniaturas do Explorer
+Desktop.ini  # Configurações personalizadas de pastas
+*.tmp        # Arquivos temporários genéricos
+*.temp       # Outro padrão comum para temporários
+~$*          # Arquivos de lock do Office (ex: ~$Documento.docx)
 
-# ============== ARQUIVOS DO WINDOWS ==============
-Thumbs.db
-Desktop.ini
-*.tmp
-*.log
-ehthumbs.db
-[Dd]esktop.ini
+# ==============================================
+# Arquivos específicos gerados pelo script
+# ==============================================
+temp_*.txt          # Arquivos temporários criados durante a execução
+DriversBackup_*.log # Logs diários (exceto se quiser versionar algum)
+backup_local/       # Pasta de backup teste (se usar localmente)
 
-# ============== ARQUIVOS DE SCRIPT ==============
-temp_*.txt
-backup_*/
-DriversBackup_*.log  # Exceto se quiser versionar logs
+# ==============================================
+# Configurações de IDEs/Editores
+# ==============================================
+.vscode/    # Configurações do Visual Studio Code
+.idea/      # Configurações do JetBrains IDE
+*.suo       # Arquivos de usuário do Visual Studio
+*.user      # Configurações pessoais de projetos
 
-# ============== IDEs/EDITORES ==============
-.vscode/
-.idea/
-*.suo
-*.user
-
-# ============== PowerShell ==============
-*.ps1xml
-*.pssc
+# ==============================================
+# Binários e arquivos compilados
+# ==============================================
+*.exe       # Executáveis não versionados
+*.dll       # Bibliotecas dinâmicas
+*.bak       # Backups acidentais de arquivos
