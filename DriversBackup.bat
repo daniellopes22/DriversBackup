@@ -52,7 +52,7 @@ echo.
 :menuInput
 set "opcao="
 set /p "opcao=Digite sua opção: "
-set "opcao=!opcao: =!"
+for /f "tokens=* delims= " %%A in ("!opcao!") do set "opcao=%%A"
 if not defined opcao (
     echo.
     echo Opção inválida. Digite 1-9.
@@ -259,8 +259,6 @@ if "!versionCompare!"=="L" (
             pause
             goto menu
         )
-        set "selfPid=0"
-        for /f %%P in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Process -Id $PID).Parent.Id" 2^>nul') do set "selfPid=%%P"
         set "updaterCmd=%TEMP%\DriversBackup_Updater_%RANDOM%.cmd"
         > "%updaterCmd%" (
             echo @echo off
@@ -268,21 +266,16 @@ if "!versionCompare!"=="L" (
             echo set "target=%%~1"
             echo set "source=%%~2"
             echo set "log=%%~3"
-            echo set "parentPid=%%~4"
-            echo if not "%%parentPid%%"=="0" ^(
-            echo :waitParent
-            echo tasklist /FI "PID eq %%parentPid%%" ^| find "%%parentPid%%" ^>nul ^&^& ^(timeout /t 1 /nobreak ^>nul ^& goto waitParent^)
-            echo ^)
             echo set /a attempts=0
             echo :retryCopy
             echo set /a attempts+=1
+            echo timeout /t 1 /nobreak ^>nul
             echo copy /y "%%source%%" "%%target%%" ^>nul
             echo if not errorlevel 1 goto copied
-            echo if %%attempts%% geq 10 ^(
+            echo if %%attempts%% geq 20 ^(
             echo ^  echo [%%time%%] Falha na atualização: não foi possível substituir o arquivo em execução ^>^> "%%log%%"
             echo ^  exit /b 1
             echo ^)
-            echo timeout /t 1 /nobreak ^>nul
             echo goto retryCopy
             echo :copied
             echo echo [%%time%%] Atualização aplicada com sucesso ^>^> "%%log%%"
@@ -290,7 +283,7 @@ if "!versionCompare!"=="L" (
             echo del "%%source%%" ^>nul 2^>^&1
             echo del "%%~f0" ^>nul 2^>^&1
         )
-        start "" "%updaterCmd%" "%~f0" "%updateTemp%" "%logFile%" "%selfPid%"
+        start "" "%updaterCmd%" "%~f0" "%updateTemp%" "%logFile%"
         exit /b 0
     )
 ) else (
