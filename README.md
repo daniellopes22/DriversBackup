@@ -7,20 +7,14 @@ Script Batch para **backup e restauração de drivers** no Windows.
 - Restauração de drivers
 - Atualização automática do script
 
-## Baixar
+## Packages
 
-### Opção 1: pacote (.zip)
-- Download direto:  
-  https://github.com/daniellopes22/DriversBackup/archive/refs/heads/main.zip
-
-### Opção 2: arquivo `.bat` (sem Invoke-WebRequest)
-```bat
-curl -L "https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/DriversBackup.bat" -o DriversBackup.bat
-```
+Baixe o pacote/arquivo diretamente na seção **Packages** do repositório.
 
 ## Como executar
-1. Extraia o `.zip` (se baixou o pacote).
-2. Execute `DriversBackup.bat` como administrador.
+1. Baixe o pacote/arquivo na seção **Packages** do repositório.
+2. Extraia o `.zip` (se necessário).
+3. Execute `DriversBackup.bat` como administrador.
 
 ## Versão atual
 - `1.6`
