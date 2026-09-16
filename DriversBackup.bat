@@ -14,7 +14,7 @@ set "logFile=%~dp0DriversBackup_%dataAtual%.log"
 net session >nul 2>&1
 if errorlevel 1 (
     echo [%time%] Elevando para administrador... >> "%logFile%"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; try { Start-Process -Verb RunAs -FilePath '%~f0' -WorkingDirectory '%~dp0' | Out-Null; exit 0 } catch { exit 1 }"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $arg='/c ""%~f0""'; try { Start-Process -Verb RunAs -FilePath '%ComSpec%' -ArgumentList $arg -WorkingDirectory '%~dp0' | Out-Null; exit 0 } catch { exit 1 }"
     if errorlevel 1 (
         echo [%time%] Elevação cancelada ou falhou >> "%logFile%"
         echo [✗] É necessário executar como administrador.
@@ -265,14 +265,25 @@ if "!versionCompare!"=="L" (
             echo setlocal EnableExtensions
             echo set "target=%%~1"
             echo set "source=%%~2"
-            echo timeout /t 2 /nobreak ^>nul
+            echo set "log=%%~3"
+            echo set /a attempts=0
+            echo :retryCopy
+            echo set /a attempts+=1
             echo copy /y "%%source%%" "%%target%%" ^>nul
-            echo if errorlevel 1 exit /b 1
+            echo if not errorlevel 1 goto copied
+            echo if %%attempts%% geq 10 ^(
+            echo ^  echo [%%time%%] Falha na atualização: não foi possível substituir o arquivo em execução ^>^> "%%log%%"
+            echo ^  exit /b 1
+            echo ^)
+            echo timeout /t 1 /nobreak ^>nul
+            echo goto retryCopy
+            echo :copied
+            echo echo [%%time%%] Atualização aplicada com sucesso ^>^> "%%log%%"
             echo start "" "%%target%%"
             echo del "%%source%%" ^>nul 2^>^&1
             echo del "%%~f0" ^>nul 2^>^&1
         )
-        start "" "%updaterCmd%" "%~f0" "%updateTemp%"
+        start "" "%updaterCmd%" "%~f0" "%updateTemp%" "%logFile%"
         exit /b 0
     )
 ) else (
