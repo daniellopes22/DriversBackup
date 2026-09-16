@@ -16,7 +16,12 @@ Script Batch para **backup e restauração de drivers** com autoatualização vi
 1. Baixe o script:
    ```powershell
    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/DriversBackup.bat" -OutFile "DriversBackup.bat"
+   ```
+2. Execute o script:
+   ```bat
+   DriversBackup.bat
+   ```
 
-## 📜 Licença  
+## 📜 Licença
 Este projeto está licenciado sob a **GNU GPL 3.0**.  
 [Leia o texto completo aqui](LICENSE).

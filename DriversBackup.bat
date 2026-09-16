@@ -1,64 +1,59 @@
 @echo off
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: DriversBackup - Backup e Restauração de Drivers (GPL 3.0)
-:: Copyright (C) 2025 Daniel Lopes
-:: Repositório: https://github.com/daniellopes22/DriversBackup
-:: 
-:: Este programa é software livre: redistribua ou modifique sob os termos da GPL3.
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-
-setlocal EnableDelayedExpansion
+setlocal EnableExtensions EnableDelayedExpansion
 chcp 65001 >nul
+title DriversBackup
 
 :: ========================= CONFIGURAÇÕES =========================
-set "versaoAtual=1.3"
+set "versaoAtual=1.4"
 set "githubUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/DriversBackup.bat"
-set "logFile=DriversBackup_%date:~-4%-%date:~-7,2%-%date:~-10,2%.log"
+set "versionUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/version.txt"
+for /f %%d in ('powershell -NoProfile -Command "(Get-Date).ToString(\"yyyy-MM-dd\")"') do set "dataAtual=%%d"
+set "logFile=%~dp0DriversBackup_%dataAtual%.log"
 
 :: ===================== VERIFICAÇÃO DE ADMIN =====================
 NET SESSION >nul 2>&1
-IF %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo [%time%] Elevando para administrador... >> "!logFile!"
-    powershell -Command "Start-Process -Verb RunAs -FilePath '%comspec%' -ArgumentList '/c cd /d ""%~dp0"" && ""%~nx0""'"
-    exit
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath '%comspec%' -ArgumentList '/c cd /d \"\"%~dp0\"\" && \"\"%~nx0\"\"'"
+    exit /b
 )
 
 :: ========================= MENU PRINCIPAL =========================
 :menu
 cls
 echo ===========================================
-echo        BACKUP E RESTAURAđấO DE DRIVERS
+echo         BACKUP E RESTAURAÇÃO DE DRIVERS
 echo ===========================================
 echo.
 echo 1 - Backup: Laboratório (Z:\Drivers)
 echo 2 - Backup: Administrativo (C:\Drivers)
 echo 3 - Backup: Caminho personalizado
 echo.
-echo 4 - Restaurađấo: Laboratório (Z:\Drivers)
-echo 5 - Restaurađấo: Administrativo (C:\Drivers)
-echo 6 - Restaurađấo: Caminho personalizado
+echo 4 - Restauração: Laboratório (Z:\Drivers)
+echo 5 - Restauração: Administrativo (C:\Drivers)
+echo 6 - Restauração: Caminho personalizado
 echo.
 echo 7 - Tutorial no YouTube
-echo 8 - Verificar atualizađấes
+echo 8 - Verificar atualizações
 echo 9 - Sair
 echo.
 
-:: ===================== VALIDAđấO DE ENTRADA =====================
+:: ===================== VALIDAÇÃO DE ENTRADA =====================
 :menuInput
 set "opcao="
-set /p opcao=Digite sua opđấo: 
+set /p "opcao=Digite sua opção: "
 set "opcao=!opcao: =!"
 set "opcao=!opcao:~0,1!"
 
-echo.!opcao! | findstr /r "^[1-9]$" >nul || (
-    echo [%time%] Opđấo inválida: !opcao! >> "!logFile!"
+echo(!opcao!| findstr /r "^[1-9]$" >nul || (
+    echo [%time%] Opção inválida: !opcao! >> "!logFile!"
     echo.
-    echo Opđấo inválida. Digite 1-9.
+    echo Opção inválida. Digite 1-9.
     timeout /t 2 >nul
     goto menu
 )
 
-:: ===================== LÓGICA DAS OPđấES =====================
+:: ===================== LÓGICA DAS OPÇÕES =====================
 if "!opcao!"=="1" set "backupDestino=Z:\Drivers" && goto backup
 if "!opcao!"=="2" set "backupDestino=C:\Drivers" && goto backup
 if "!opcao!"=="3" call :inputPath "backup" && goto backup
@@ -73,14 +68,18 @@ if "!opcao!"=="9" goto exitScript
 :inputPath
 set "pathType=%~1"
 set "pathVar="
-set /p pathVar=Digite o caminho para %pathType%: 
+set /p "pathVar=Digite o caminho para %pathType%: "
 if not defined pathVar (
     echo [%time%] Caminho vazio para %pathType% >> "!logFile!"
-    echo Erro: Caminho nấo pode ser vazio!
+    echo Erro: Caminho não pode ser vazio!
     timeout /t 2 >nul
     exit /b 1
 )
-if "!pathType!"=="backup" (set "backupDestino=!pathVar!") else (set "restauraOrigem=!pathVar!")
+if "!pathType!"=="backup" (
+    set "backupDestino=!pathVar!"
+) else (
+    set "restauraOrigem=!pathVar!"
+)
 exit /b 0
 
 :backup
@@ -103,7 +102,7 @@ if not exist "!backupDestino!\" (
 
 dism /online /export-driver /destination:"!backupDestino!" >> "!logFile!" 2>&1
 if errorlevel 1 (
-    echo [✗] Erro no DISM! Consulte o log
+    echo [✗] Erro no DISM! Consulte o log.
     echo [%time%] Erro durante backup >> "!logFile!"
 ) else (
     echo [✓] Backup concluído em: !backupDestino!
@@ -117,7 +116,7 @@ goto menu
 :restore
 cls
 echo ===========================================
-echo         RESTAURAđấO DOS DRIVERS
+echo         RESTAURAÇÃO DOS DRIVERS
 echo ===========================================
 echo.
 
@@ -134,11 +133,22 @@ for /r "!restauraOrigem!" %%f in (*.inf) do (
     set /a driverCount+=1
     echo Instalando: %%~nxf
     pnputil /add-driver "%%f" /install >> "!logFile!" 2>&1
-    if !errorlevel! equ 0 (set /a successCount+=1 && echo [✓]) else echo [✗]
+    if errorlevel 1 (
+        echo [✗] Falha ao instalar %%~nxf
+    ) else (
+        set /a successCount+=1
+        echo [✓] %%~nxf instalado
+    )
 )
-echo.
-echo Resultado: !successCount!/!driverCount! drivers instalados
-echo [%time%] Restaurađấo concluída >> "!logFile!"
+
+if !driverCount! equ 0 (
+    echo Nenhum driver encontrado em !restauraOrigem!.
+) else (
+    echo.
+    echo Resultado: !successCount!/!driverCount! drivers instalados
+)
+
+echo [%time%] Restauração concluída >> "!logFile!"
 pause
 goto menu
 
@@ -155,20 +165,28 @@ timeout /t 3 >nul
 goto menu
 
 :checkUpdates
-echo [%time%] Verificando atualizađấes >> "!logFile!"
-powershell -Command "(Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/version.txt').Content" > temp_version.txt
-set /p versaoGitHub=<temp_version.txt
-del temp_version.txt
+echo [%time%] Verificando atualizações >> "!logFile!"
+set "tempVersionFile=%TEMP%\DriversBackup_version.txt"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { (Invoke-WebRequest -Uri '%versionUrl%' -UseBasicParsing).Content } catch { exit 1 }" > "%tempVersionFile%"
+if errorlevel 1 (
+    echo [✗] Não foi possível verificar atualizações.
+    echo [%time%] Falha ao consultar versão remota >> "!logFile!"
+    pause
+    goto menu
+)
+set /p "versaoGitHub=<%tempVersionFile%"
+del "%tempVersionFile%" 2>nul
 
-if "!versaoGitHub!" gtr "!versaoAtual!" (
+call :compareVersions "!versaoAtual!" "!versaoGitHub!" versionCompare
+if "!versionCompare!"=="L" (
     echo Nova versão !versaoGitHub! disponível!
     choice /c SN /m "Atualizar agora (S/N)?"
-    if !errorlevel! equ 1 (
-        echo [%time%] Iniciando atualizađấo >> "!logFile!"
-        powershell -Command "Invoke-WebRequest -Uri '!githubUrl!' -OutFile 'DriversBackup_NEW.bat'"
-        move /Y "DriversBackup_NEW.bat" "%~nx0" >nul
-        start "" "%~nx0"
-        exit
+    if errorlevel 1 (
+        echo [%time%] Iniciando atualização >> "!logFile!"
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '%githubUrl%' -OutFile '%~dp0DriversBackup_NEW.bat' -UseBasicParsing"
+        move /Y "%~dp0DriversBackup_NEW.bat" "%~f0" >nul
+        start "" "%~f0"
+        exit /b
     )
 ) else (
     echo Você já está na versão mais recente (!versaoAtual!).
@@ -176,13 +194,39 @@ if "!versaoGitHub!" gtr "!versaoAtual!" (
 pause
 goto menu
 
+:compareVersions
+set "left=%~1"
+set "right=%~2"
+for /f "tokens=1,2,3 delims=." %%a in ("%left%") do (
+    set "l1=%%a"
+    set "l2=%%b"
+    set "l3=%%c"
+)
+for /f "tokens=1,2,3 delims=." %%a in ("%right%") do (
+    set "r1=%%a"
+    set "r2=%%b"
+    set "r3=%%c"
+)
+if not defined l2 set "l2=0"
+if not defined l3 set "l3=0"
+if not defined r2 set "r2=0"
+if not defined r3 set "r3=0"
+if !l1! gtr !r1! (set "%~3=G" & exit /b 0)
+if !l1! lss !r1! (set "%~3=L" & exit /b 0)
+if !l2! gtr !r2! (set "%~3=G" & exit /b 0)
+if !l2! lss !r2! (set "%~3=L" & exit /b 0)
+if !l3! gtr !r3! (set "%~3=G" & exit /b 0)
+if !l3! lss !r3! (set "%~3=L" & exit /b 0)
+set "%~3=E"
+exit /b 0
+
 :exitScript
 choice /c SN /m "Deseja reiniciar o computador (S/N)?"
-if !errorlevel! equ 1 (
+if errorlevel 1 (
     echo [%time%] Reiniciando sistema >> "!logFile!"
     shutdown /r /t 5
 )
-exit
+exit /b
 
 :end
 endlocal
