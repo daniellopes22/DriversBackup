@@ -259,6 +259,8 @@ if "!versionCompare!"=="L" (
             pause
             goto menu
         )
+        set "selfPid=0"
+        for /f %%P in ('powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Process -Id $PID).Parent.Id" 2^>nul') do set "selfPid=%%P"
         set "updaterCmd=%TEMP%\DriversBackup_Updater_%RANDOM%.cmd"
         > "%updaterCmd%" (
             echo @echo off
@@ -266,6 +268,11 @@ if "!versionCompare!"=="L" (
             echo set "target=%%~1"
             echo set "source=%%~2"
             echo set "log=%%~3"
+            echo set "parentPid=%%~4"
+            echo if not "%%parentPid%%"=="0" ^(
+            echo :waitParent
+            echo tasklist /FI "PID eq %%parentPid%%" ^| find "%%parentPid%%" ^>nul ^&^& ^(timeout /t 1 /nobreak ^>nul ^& goto waitParent^)
+            echo ^)
             echo set /a attempts=0
             echo :retryCopy
             echo set /a attempts+=1
@@ -283,7 +290,7 @@ if "!versionCompare!"=="L" (
             echo del "%%source%%" ^>nul 2^>^&1
             echo del "%%~f0" ^>nul 2^>^&1
         )
-        start "" "%updaterCmd%" "%~f0" "%updateTemp%" "%logFile%"
+        start "" "%updaterCmd%" "%~f0" "%updateTemp%" "%logFile%" "%selfPid%"
         exit /b 0
     )
 ) else (
