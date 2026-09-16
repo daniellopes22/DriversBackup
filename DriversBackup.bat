@@ -295,6 +295,12 @@ goto menu
 :compareVersions
 set "left=%~1"
 set "right=%~2"
+set "l1="
+set "l2="
+set "l3="
+set "r1="
+set "r2="
+set "r3="
 for /f "tokens=1,2,3 delims=." %%A in ("%left%") do (
     set "l1=%%A"
     set "l2=%%B"
