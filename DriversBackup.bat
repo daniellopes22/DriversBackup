@@ -7,7 +7,7 @@ title DriversBackup
 set "versaoAtual=1.6"
 set "githubUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/DriversBackup.bat"
 set "versionUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/version.txt"
-for /f %%D in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd')"') do set "dataAtual=%%D"
+for /f "usebackq delims=" %%D in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; (Get-Date).ToString('yyyy-MM-dd')"` ) do set "dataAtual=%%D"
 set "logFile=%~dp0DriversBackup_%dataAtual%.log"
 
 :: ===================== VERIFICAÇÃO DE ADMIN =====================
@@ -295,6 +295,12 @@ goto menu
 :compareVersions
 set "left=%~1"
 set "right=%~2"
+set "l1="
+set "l2="
+set "l3="
+set "r1="
+set "r2="
+set "r3="
 for /f "tokens=1,2,3 delims=." %%A in ("%left%") do (
     set "l1=%%A"
     set "l2=%%B"
