@@ -1,0 +1,159 @@
+name: Publish release assets
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve version metadata
+        id: version
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n' < version.txt)"
+
+          if [[ -z "$version" ]]; then
+            echo "version.txt está vazio."
+            exit 1
+          fi
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag="${GITHUB_REF_NAME}"
+          else
+            tag="v${version}"
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Validate tag matches version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          expected_tag="v${{ steps.version.outputs.version }}"
+
+          if [[ "${{ steps.version.outputs.tag }}" != "${expected_tag}" ]]; then
+            echo "A tag ${GITHUB_REF_NAME} não corresponde à versão ${expected_tag}."
+            exit 1
+          fi
+
+      - name: Build release assets
+        shell: bash
+        run: |
+          rm -rf dist
+          mkdir -p dist/package
+
+          cp DriversBackup.bat README.md LICENSE version.txt dist/package/
+          (
+            cd dist/package
+            zip -r "../DriversBackup-v${{ steps.version.outputs.version }}.zip" .
+          )
+
+          cp DriversBackup.bat dist/DriversBackup.bat
+
+      - name: Create or update release
+        id: release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = process.env.RELEASE_TAG;
+            const version = process.env.RELEASE_VERSION;
+
+            let release;
+
+            try {
+              release = (await github.rest.repos.getReleaseByTag({
+                owner,
+                repo,
+                tag
+              })).data;
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              release = (await github.rest.repos.createRelease({
+                owner,
+                repo,
+                tag_name: tag,
+                name: `DriversBackup ${version}`,
+                generate_release_notes: true
+              })).data;
+            }
+
+            core.setOutput("release_id", String(release.id));
+
+      - name: Upload release assets
+        uses: actions/github-script@v7
+        env:
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        with:
+          script: |
+            const fs = require("fs");
+            const path = require("path");
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const releaseId = Number(process.env.RELEASE_ID);
+            const version = process.env.RELEASE_VERSION;
+
+            const assets = [
+              {
+                filePath: path.join(process.env.GITHUB_WORKSPACE, "dist", `DriversBackup-v${version}.zip`),
+                name: `DriversBackup-v${version}.zip`,
+                contentType: "application/zip"
+              },
+              {
+                filePath: path.join(process.env.GITHUB_WORKSPACE, "dist", "DriversBackup.bat"),
+                name: "DriversBackup.bat",
+                contentType: "application/octet-stream"
+              }
+            ];
+
+            const existingAssets = await github.paginate(github.rest.repos.listReleaseAssets, {
+              owner,
+              repo,
+              release_id: releaseId,
+              per_page: 100
+            });
+
+            for (const asset of assets) {
+              const existing = existingAssets.find((item) => item.name === asset.name);
+
+              if (existing) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner,
+                  repo,
+                  asset_id: existing.id
+                });
+              }
+
+              await github.rest.repos.uploadReleaseAsset({
+                owner,
+                repo,
+                release_id: releaseId,
+                name: asset.name,
+                headers: {
+                  "content-type": asset.contentType,
+                  "content-length": fs.statSync(asset.filePath).size
+                },
+                data: fs.readFileSync(asset.filePath)
+              });
+            }
