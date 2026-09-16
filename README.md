@@ -10,7 +10,8 @@ Script Batch para **backup e restauração de drivers** com autoatualização vi
 - Restauração de drivers a partir de backups
 - Menu interativo com validação de entrada
 - Sistema de logs detalhado
-- Atualização automática via repositório público
+- Elevação de administrador com reexecução segura
+- Atualização automática com processo temporário de troca do `.bat`
 
 ## Como Usar 🚀
 1. Baixe o script:
@@ -21,6 +22,13 @@ Script Batch para **backup e restauração de drivers** com autoatualização vi
    ```bat
    DriversBackup.bat
    ```
+
+## Versão atual
+- `1.6`
+
+## Observação sobre atualização
+- A verificação/atualização automática usa URLs públicas do GitHub (`raw.githubusercontent.com`).
+- Se o repositório estiver privado, a atualização automática pode não baixar arquivos sem autenticação.
 
 ## 📜 Licença
 Este projeto está licenciado sob a **GNU GPL 3.0**.  
