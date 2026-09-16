@@ -50,9 +50,15 @@ Script Batch para **backup e restauração de drivers** com autoatualização vi
 ### 4) Evidências registradas
 - Script analisado: `DriversBackup.bat` (fluxos de menu, backup, restauração, atualização, elevação).
 - Documentação/versionamento: `README.md`, `version.txt`.
-- Execuções recentes do workflow:
-  - Runs antigos cancelados: `#1`, `#2`.
-  - Runs subsequentes com sucesso: `#3`, `#4`, `#5`, `#6`.
+- Execuções recentes do workflow **Running Copilot cloud agent**:
+  - Runs antigos cancelados:
+    - `#1` — https://github.com/daniellopes22/DriversBackup/actions/runs/35119930002
+    - `#2` — https://github.com/daniellopes22/DriversBackup/actions/runs/35120656579
+  - Runs subsequentes com sucesso:
+    - `#3` — https://github.com/daniellopes22/DriversBackup/actions/runs/35121297937
+    - `#4` — https://github.com/daniellopes22/DriversBackup/actions/runs/35121482506
+    - `#5` — https://github.com/daniellopes22/DriversBackup/actions/runs/35121562212
+    - `#6` — https://github.com/daniellopes22/DriversBackup/actions/runs/35121652742
 
 ### 5) Recomendações
 1. Adicionar verificação de integridade do arquivo atualizado (hash/assinatura).
