@@ -4,7 +4,7 @@ chcp 65001 >nul
 title DriversBackup
 
 :: ========================= CONFIGURAÇÕES =========================
-set "versaoAtual=1.5"
+set "versaoAtual=1.6"
 set "githubUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/DriversBackup.bat"
 set "versionUrl=https://raw.githubusercontent.com/daniellopes22/DriversBackup/main/version.txt"
 for /f %%D in ('powershell -NoProfile -Command "(Get-Date).ToString('yyyy-MM-dd')"') do set "dataAtual=%%D"
@@ -14,8 +14,14 @@ set "logFile=%~dp0DriversBackup_%dataAtual%.log"
 net session >nul 2>&1
 if errorlevel 1 (
     echo [%time%] Elevando para administrador... >> "%logFile%"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -Verb RunAs -FilePath '%comspec%' -ArgumentList '/c cd /d \"%~dp0\" && \"%~nx0\"'"
-    exit /b
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; try { Start-Process -Verb RunAs -FilePath '%~f0' -WorkingDirectory '%~dp0' | Out-Null; exit 0 } catch { exit 1 }"
+    if errorlevel 1 (
+        echo [%time%] Elevação cancelada ou falhou >> "%logFile%"
+        echo [✗] É necessário executar como administrador.
+        pause
+        exit /b 1
+    )
+    exit /b 0
 )
 
 if not exist "%logFile%" (
@@ -46,14 +52,13 @@ echo.
 :menuInput
 set "opcao="
 set /p "opcao=Digite sua opção: "
+set "opcao=!opcao: =!"
 if not defined opcao (
     echo.
     echo Opção inválida. Digite 1-9.
     timeout /t 2 >nul
     goto menu
 )
-set "opcao=!opcao: =!"
-set "opcao=!opcao:~0,1!"
 
 echo(!opcao!| findstr /r "^[1-9]$" >nul || (
     echo [%time%] Opção inválida: !opcao! >> "%logFile%"
@@ -107,6 +112,12 @@ if not defined pathVar (
     timeout /t 2 >nul
     exit /b 1
 )
+echo(!pathVar!| findstr /r "[^ ]" >nul || (
+    echo [%time%] Caminho vazio para %pathType% >> "%logFile%"
+    echo Erro: Caminho não pode ser vazio!
+    timeout /t 2 >nul
+    exit /b 1
+)
 if /i "%pathType%"=="backup" (
     set "backupDestino=!pathVar!"
 ) else (
@@ -116,6 +127,12 @@ exit /b 0
 
 :backup
 cls
+if not defined backupDestino (
+    echo [%time%] Destino de backup vazio >> "%logFile%"
+    echo [✗] Destino de backup inválido.
+    pause
+    goto menu
+)
 echo [%time%] Iniciando backup em: !backupDestino! >> "%logFile%"
 echo ===========================================
 echo            BACKUP DOS DRIVERS
@@ -148,6 +165,12 @@ goto menu
 
 :restore
 cls
+if not defined restauraOrigem (
+    echo [%time%] Origem de restauração vazia >> "%logFile%"
+    echo [✗] Origem de restauração inválida.
+    pause
+    goto menu
+)
 echo ===========================================
 echo         RESTAURAÇÃO DOS DRIVERS
 echo ===========================================
@@ -199,17 +222,14 @@ goto menu
 
 :checkUpdates
 echo [%time%] Verificando atualizações >> "%logFile%"
-set "tempVersionFile=%TEMP%\DriversBackup_version.txt"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { (Invoke-WebRequest -Uri '%versionUrl%' -UseBasicParsing).Content.Trim() } catch { exit 1 }" > "%tempVersionFile%"
-if errorlevel 1 (
+set "versaoGitHub="
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $v=(Invoke-WebRequest -Uri '%versionUrl%' -MaximumRedirection 5 -UseBasicParsing).Content; if ($null -eq $v) { exit 2 }; $v=($v -replace '[^\d\.]','').Trim(); if ([string]::IsNullOrWhiteSpace($v)) { exit 3 }; Write-Output $v" 2^>nul`) do set "versaoGitHub=%%V"
+if not defined versaoGitHub (
     echo [✗] Não foi possível verificar atualizações.
     echo [%time%] Falha ao consultar versão remota >> "%logFile%"
-    del "%tempVersionFile%" 2>nul
     pause
     goto menu
 )
-set /p "versaoGitHub=<%tempVersionFile%"
-del "%tempVersionFile%" 2>nul
 
 call :compareVersions "%versaoAtual%" "%versaoGitHub%" versionCompare
 if "!versionCompare!"=="L" (
@@ -218,16 +238,42 @@ if "!versionCompare!"=="L" (
     if errorlevel 2 goto menu
     if errorlevel 1 (
         echo [%time%] Iniciando atualização >> "%logFile%"
-        set "updateTemp=%~dp0DriversBackup_Update.bat"
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -Uri '%githubUrl%' -OutFile '%updateTemp%' -UseBasicParsing } catch { exit 1 }"
+        set "updateTemp=%TEMP%\DriversBackup_New_%RANDOM%.bat"
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; try { Invoke-WebRequest -Uri '%githubUrl%' -MaximumRedirection 5 -OutFile '%updateTemp%' -UseBasicParsing } catch { exit 1 }"
         if errorlevel 1 (
             echo [✗] Falha ao baixar a atualização.
             echo [%time%] Falha ao baixar nova versão >> "%logFile%"
             pause
             goto menu
         )
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2; Move-Item -Force '%updateTemp%' '%~f0'; Start-Process '%~f0'"
-        exit /b
+        if not exist "%updateTemp%" (
+            echo [✗] Arquivo de atualização inválido.
+            echo [%time%] Download sem arquivo válido >> "%logFile%"
+            pause
+            goto menu
+        )
+        for %%I in ("%updateTemp%") do if %%~zI lss 100 (
+            echo [✗] Arquivo de atualização corrompido ou incompleto.
+            echo [%time%] Download incompleto: %%~zI bytes >> "%logFile%"
+            del "%updateTemp%" 2>nul
+            pause
+            goto menu
+        )
+        set "updaterCmd=%TEMP%\DriversBackup_Updater_%RANDOM%.cmd"
+        > "%updaterCmd%" (
+            echo @echo off
+            echo setlocal EnableExtensions
+            echo set "target=%%~1"
+            echo set "source=%%~2"
+            echo timeout /t 2 /nobreak ^>nul
+            echo copy /y "%%source%%" "%%target%%" ^>nul
+            echo if errorlevel 1 exit /b 1
+            echo start "" "%%target%%"
+            echo del "%%source%%" ^>nul 2^>^&1
+            echo del "%%~f0" ^>nul 2^>^&1
+        )
+        start "" "%updaterCmd%" "%~f0" "%updateTemp%"
+        exit /b 0
     )
 ) else (
     echo Você já está na versão mais recente (!versaoAtual!).
